@@ -28,7 +28,9 @@ package com.holub.database;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 /***
  *	Pass this exporter to a {@link Table#export} implementation to
@@ -61,11 +63,14 @@ import java.util.Iterator;
  * @see CSVImporter
  */
 
-public class HTMLExporter implements Table.Exporter
+public class XMLExporter implements Table.Exporter
 {	private final Writer out;
 	private 	  int	 width;
+	private String tableName;
+	private List<String> columns = new ArrayList<>();
+	private int indentLevel = 1;
 
-	public HTMLExporter(Writer out )
+	public XMLExporter(Writer out )
 	{	this.out = out;
 	}
 
@@ -74,29 +79,59 @@ public class HTMLExporter implements Table.Exporter
 							   int height,
 							   Iterator columnNames ) throws IOException
 
-	{	this.width = width;
-		out.write(tableName == null ? "<anonymous>" : tableName );
+	{
+		this.width = width;
+		this.tableName = tableName == null ? "<anonymous>" : tableName;
+		out.write("<"+this.tableName+">");
+		indentLevel++;
 		out.write("\n");
-		storeRow( columnNames ); // comma separated list of columns ids
+		saveColumns(columnNames);
 	}
 
 	public void storeRow( Iterator data ) throws IOException
-	{	int i = width;
+	{
+		out.write("	<item>\n");
+		indentLevel++;
+		int i = 0;
 		while( data.hasNext() )
-		{	Object datum = data.next();
+		{
+			String targetColumn = columns.get(i);
+			//out.write("<"+targetColumn+">");
+			Object datum = data.next();
 
-			// Null columns are represented by an empty field
-			// (two commas in a row). There's nothing to write
-			// if the column data is null.
-			if( datum != null )	
-				out.write( datum.toString() );
-
-			if( --i > 0 )
-				out.write(",\t");
+			out.write(writeXMLStandardFormat(targetColumn,datum.toString(),indentLevel));
+			i++;
+			//out.write("</"+targetColumn+">");
 		}
-		out.write("\n");
+		out.write("	</item>\n");
+		indentLevel--;
 	}
 
-	public void startTable() throws IOException {/*nothing to do*/}
-	public void endTable()   throws IOException {/*nothing to do*/}
+	public void startTable() throws IOException {
+
+	}
+	public void endTable()   throws IOException {
+		out.write(" </"+tableName+">\n");
+	}
+
+	private String writeXMLStandardFormat(String caption,String content,int indent){
+		//<caption>content</caption>
+		StringBuilder prefix = new StringBuilder();
+		for(int i = 0;i<indent;i++){
+			prefix.append("  ");
+		}
+		prefix.append("<").append(caption).append(">");
+		String postfix = "</" + caption + ">";
+		return prefix + content + postfix+"\n";
+	}
+	private void saveColumns(Iterator data) throws IOException {
+		StringBuilder columnNames = new StringBuilder();
+		while(data.hasNext()){
+			String columnName = data.next().toString();
+			columns.add(columnName);
+			columnNames.append(columnName);
+			if(data.hasNext()) columnNames.append("/");
+		}
+		out.write(writeXMLStandardFormat("meta",columnNames.toString(),indentLevel));
+	}
 }

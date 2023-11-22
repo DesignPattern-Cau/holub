@@ -63,14 +63,14 @@ import java.util.List;
  * @see CSVImporter
  */
 
-public class XMLExporter implements Table.Exporter
+public class HTMLExporter implements Table.Exporter
 {	private final Writer out;
 	private 	  int	 width;
 	private String tableName;
 	private List<String> columns = new ArrayList<>();
 	private int indentLevel = 1;
 
-	public XMLExporter(Writer out )
+	public HTMLExporter(Writer out )
 	{	this.out = out;
 	}
 
@@ -82,15 +82,16 @@ public class XMLExporter implements Table.Exporter
 	{
 		this.width = width;
 		this.tableName = tableName == null ? "<anonymous>" : tableName;
-		out.write("<"+this.tableName+">");
+		out.write(writeHTMLStandardFormat("title",null,null,tableName,this.indentLevel,false));
+		out.write("   </head>\n");
 		indentLevel++;
-		out.write("\n");
+		out.write("   <body>\n");
 		saveColumns(columnNames);
 	}
 
 	public void storeRow( Iterator data ) throws IOException
 	{
-		out.write("	<item>\n");
+		out.write("	<div>\n");
 		indentLevel++;
 		int i = 0;
 		while( data.hasNext() )
@@ -99,31 +100,50 @@ public class XMLExporter implements Table.Exporter
 			//out.write("<"+targetColumn+">");
 			Object datum = data.next();
 
-			out.write(writeXMLStandardFormat(targetColumn,datum.toString(),indentLevel));
+			out.write(writeHTMLStandardFormat("p","name",targetColumn,datum.toString(),indentLevel,false));
 			i++;
 			//out.write("</"+targetColumn+">");
 		}
-		out.write("	</item>\n");
+		out.write("	</div>\n");
 		indentLevel--;
 	}
 
 	public void startTable() throws IOException {
-
+		out.write("<!DOCTYPE html>\n");
+		out.write(" <html lang=\"ko\">\n");
+		out.write("   <head>\n");
+		out.write("     <meta charset=\"utf-8\">\n");
+		indentLevel++;
+		indentLevel++;
 	}
 	public void endTable()   throws IOException {
-		out.write(" </"+tableName+">\n");
+		out.write("  </body>\n");
+		out.write(" </html>\n");
 	}
 
-	private String writeXMLStandardFormat(String caption,String content,int indent){
+	private String writeHTMLStandardFormat(String tagName,String attrName, String attrValue, String content,int indent,boolean isEnter){
 		//<caption>content</caption>
 		StringBuilder prefix = new StringBuilder();
+		StringBuilder postfix = new StringBuilder();
 		for(int i = 0;i<indent;i++){
 			prefix.append("  ");
+			if(isEnter){
+				postfix.append("  ");
+			}
 		}
-		prefix.append("<").append(caption).append(">");
-		String postfix = "</" + caption + ">";
+		prefix.append("<").append(tagName);
+		if(attrName!=null){
+			prefix.append(" ").append(attrName).append("=").append("\"").append(attrValue).append("\"");
+		}
+		prefix.append(">");
+		if(isEnter) {
+			prefix.append("\n");
+			postfix.append("\n");
+		}
+		postfix.append("</").append(tagName).append(">");
 		return prefix + content + postfix+"\n";
 	}
+
 	private void saveColumns(Iterator data) throws IOException {
 		StringBuilder columnNames = new StringBuilder();
 		while(data.hasNext()){
@@ -132,6 +152,5 @@ public class XMLExporter implements Table.Exporter
 			columnNames.append(columnName);
 			if(data.hasNext()) columnNames.append("/");
 		}
-		out.write(writeXMLStandardFormat("meta",columnNames.toString(),indentLevel));
 	}
 }

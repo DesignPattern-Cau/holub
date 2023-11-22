@@ -28,8 +28,13 @@ package com.holub.database;
 
 import com.holub.tools.ArrayIterator;
 
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.Reader;
+import java.util.Iterator;
+import java.util.StringTokenizer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /***
  *	Pass this importer to a {@link Table} constructor (such
@@ -64,20 +69,24 @@ import java.util.*;
  * @see CSVExporter
  */
 
-public class CSVImporter implements Table.Importer
+public class XMLImporter implements Table.Importer
 {	private BufferedReader  in;			// null once end-of-file reached
 	private String[]        columnNames;
 	private String          tableName;
+	private final String XMLTagRegex = "<([^>]+)>(.*?)</\\1>";
 
-	public CSVImporter( Reader in )
+	public XMLImporter(Reader in )
 	{	this.in = in instanceof BufferedReader
 						? (BufferedReader)in
                         : new BufferedReader(in)
 	                    ;
 	}
 	public void startTable()			throws IOException
-	{	tableName   = in.readLine().trim();
-		columnNames = in.readLine().split("\\s*,\\s*");
+	{
+		String firstLine = in.readLine().trim();
+		tableName   = extractCaption(firstLine);
+		String parsedColumnNames = parseColumnNames();
+		columnNames = parsedColumnNames.split("\\s*,\\s*");
 	}
 	public String loadTableName()		throws IOException
 	{	return tableName;
@@ -92,14 +101,49 @@ public class CSVImporter implements Table.Importer
 	public Iterator loadRow()			throws IOException
 	{	Iterator row = null;
 		if( in != null )
-		{	String line = in.readLine();
-			if( line == null )
+		{	String line = in.readLine().trim();
+			if (extractCaption(line).equals("/"+tableName)) return row;
+
+			if( !extractCaption(line).equals("item"))
 				in = null;
 			else
+				line = parseXMLRowFormat();
 				row = new ArrayIterator( line.split("\\s*,\\s*"));
 		}
 		return row;
 	}
 
 	public void endTable() throws IOException {}
+
+	private String parseColumnNames() throws IOException {
+		String input = in.readLine().trim();
+		String metaRow = input.substring(6,input.length()-7);
+		StringTokenizer st = new StringTokenizer(metaRow,"/");
+		StringBuilder parsingFormat = new StringBuilder();
+		while (st.hasMoreTokens()){
+			parsingFormat.append(st.nextToken()+",\t");
+		}
+		return parsingFormat.toString();
+	}
+
+	private String extractCaption(String raw){
+		return raw.substring(1,raw.length()-1);
+	}
+
+	private String parseXMLRowFormat() throws IOException {
+		StringBuilder parsingFormat = new StringBuilder();
+		String nextLine = in.readLine().trim();
+		Pattern pattern = Pattern.compile(XMLTagRegex);
+		Matcher matcher;
+		while(!nextLine.startsWith("</")){
+			matcher = pattern.matcher(nextLine);
+			if(matcher.find()){
+				parsingFormat.append(matcher.group(2)+",\t");
+			}
+			nextLine=in.readLine().trim();
+		}
+		return parsingFormat.toString();
+	}
+
 }
+
