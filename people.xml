@@ -1,0 +1,13 @@
+<people>
+    <meta>last/first/addrId</meta>
+	<item>
+      <last>Holub</last>
+      <first>Allen</first>
+      <addrId>1</addrId>
+	</item>
+	<item>
+      <last>Holub2</last>
+      <first>Allen</first>
+      <addrId>12</addrId>
+	</item>
+ </people>
